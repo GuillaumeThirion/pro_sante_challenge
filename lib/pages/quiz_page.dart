@@ -13,6 +13,8 @@ class QuizPage extends StatefulWidget {
 
 class _QuizPageState extends State<QuizPage> {
   final QuizController controller = QuizController();
+  int? selectedIndex;
+  bool answered = false;
 
   Color _difficultyColor(Difficulty difficulty) {
     switch (difficulty) {
@@ -26,18 +28,35 @@ class _QuizPageState extends State<QuizPage> {
   }
 
   void _handleAnswer(int index) {
-    controller.answer(index);
+    if (answered) return;
 
-    if (controller.isFinished) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ResultPage(score: controller.score),
-        ),
-      );
-    } else {
-      setState(() {});
-    }
+    setState(() {
+      selectedIndex = index;
+      answered = true;
+    });
+
+    Future.delayed(const Duration(seconds: 1), () {
+      controller.answer(index);
+
+      if (!mounted) return;
+
+      if (controller.isFinished) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ResultPage(
+              score: controller.score,
+              total: controller.questions.length,
+            ),
+          ),
+        );
+      } else {
+        setState(() {
+          selectedIndex = null;
+          answered = false;
+        });
+      }
+    });
   }
 
   @override
@@ -81,8 +100,11 @@ class _QuizPageState extends State<QuizPage> {
                   (index) => AnswerButton(
                 text: question.answers[index],
                 onTap: () => _handleAnswer(index),
+                isCorrect: index == question.correctIndex,
+                isSelected: index == selectedIndex,
+                showResult: answered,
               ),
-            )
+            ),
           ],
         ),
       ),
